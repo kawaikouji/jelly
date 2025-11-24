@@ -81,7 +81,8 @@ class GamePainter extends CustomPainter {
 
       final paintJelly = Paint()..color = color;
 
-      const double margin = 3.0;
+      // Proportional margin (e.g., 5% of tile size)
+      final double margin = tileSize * 0.05;
       double tx = x + margin;
       double ty = y + margin;
       double tw = tileSize - margin * 2;
@@ -102,8 +103,8 @@ class GamePainter extends CustomPainter {
         th += margin;
       }
 
-      // Corner radius logic
-      const double rVal = 12.0;
+      // Corner radius logic (proportional)
+      final double rVal = tileSize * 0.3;
       final r = Radius.circular(rVal);
 
       final tl = (up || left) ? Radius.zero : r;
@@ -126,7 +127,17 @@ class GamePainter extends CustomPainter {
       if (!up && !left) {
         final paintGloss = Paint()..color = Colors.white.withValues(alpha: 0.3);
         // Adjust gloss to fit rounded corner
-        canvas.drawOval(Rect.fromLTWH(tx + 3, ty + 3, 8, 6), paintGloss);
+        final double glossSize = tileSize * 0.25;
+        final double glossOffset = tileSize * 0.1;
+        canvas.drawOval(
+          Rect.fromLTWH(
+            tx + glossOffset,
+            ty + glossOffset,
+            glossSize,
+            glossSize * 0.75,
+          ),
+          paintGloss,
+        );
       }
     }
   }

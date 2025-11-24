@@ -4,7 +4,9 @@ import 'game_model.dart';
 import 'game_painter.dart';
 
 class GameScreen extends StatefulWidget {
-  const GameScreen({super.key});
+  final int initialLevelIndex;
+  const GameScreen({super.key, this.initialLevelIndex = 0});
+
   @override
   State<GameScreen> createState() => _GameScreenState();
 }
@@ -12,9 +14,11 @@ class GameScreen extends StatefulWidget {
 class _GameScreenState extends State<GameScreen> {
   final GameModel _game = GameModel();
   final FocusNode _focusNode = FocusNode();
+
   @override
   void initState() {
     super.initState();
+    _game.loadLevel(widget.initialLevelIndex);
     _game.addListener(_onGameUpdate);
     // Request focus for keyboard input
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -105,6 +109,22 @@ class _GameScreenState extends State<GameScreen> {
                       ),
                     ),
                     const SizedBox(height: 10),
+                    // Back Button
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(
+                          Icons.arrow_back,
+                          color: Colors.white70,
+                        ),
+                        label: const Text(
+                          'Menu',
+                          style: TextStyle(color: Colors.white70),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 5),
                     // Legend
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
