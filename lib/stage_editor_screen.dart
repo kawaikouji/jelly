@@ -3,387 +3,218 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'game_model.dart';
 import 'game_painter.dart';
-import 'game_screen.dart';
+import 'stage_editor_detail_screen.dart';
 
-class StageEditorScreen extends StatefulWidget {
+class StageEditorScreen extends StatelessWidget {
   const StageEditorScreen({super.key});
 
   @override
-  State<StageEditorScreen> createState() => _StageEditorScreenState();
-}
-
-class _StageEditorScreenState extends State<StageEditorScreen> {
-  late GameModel _gameModel;
-  int _selectedPaletteIndex =
-      0; // 0: Wall, 1: Red, 2: Blue, 3: Yellow, 4: Purple, 5: Eraser
-  bool _isSaving = false;
-  int? _lastPaintedX;
-  int? _lastPaintedY;
-  bool _hasBeenCleared = false; // Track if test play was cleared
-
-  // Palette items configuration
-  final List<Map<String, dynamic>> _paletteItems = [
-    {'label': 'Wall', 'color': GamePainter.colorWall, 'type': 'wall'},
-    {
-      'label': 'Red',
-      'color': GamePainter.jellyColors[JellyColor.red],
-      'type': 'jelly',
-      'jellyColor': JellyColor.red,
-    },
-    {
-      'label': 'Blue',
-      'color': GamePainter.jellyColors[JellyColor.blue],
-      'type': 'jelly',
-      'jellyColor': JellyColor.blue,
-    },
-    {
-      'label': 'Yellow',
-      'color': GamePainter.jellyColors[JellyColor.yellow],
-      'type': 'jelly',
-      'jellyColor': JellyColor.yellow,
-    },
-    {
-      'label': 'Purple',
-      'color': GamePainter.jellyColors[JellyColor.purple],
-      'type': 'jelly',
-      'jellyColor': JellyColor.purple,
-    },
-    {'label': 'Eraser', 'color': Colors.white, 'type': 'eraser'},
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    _gameModel = GameModel();
-    _clearStage(); // Start with empty stage
-  }
-
-  void _clearStage() {
-    // Initialize empty 15x15 grid
-    _gameModel.walls = List.generate(gridH, (_) => List.filled(gridW, false));
-    _gameModel.jellies = [];
-
-    // Add border walls
-    for (int y = 0; y < gridH; y++) {
-      for (int x = 0; x < gridW; x++) {
-        if (x == 0 || x == gridW - 1 || y == 0 || y == gridH - 1) {
-          _gameModel.walls[y][x] = true;
-        }
-      }
-    }
-    _hasBeenCleared = false; // Reset cleared status
-    setState(() {});
-  }
-
-  List<String> _convertStageToData() {
-    List<String> stageData = [];
-
-    for (int y = 0; y < gridH; y++) {
-      String row = '';
-      for (int x = 0; x < gridW; x++) {
-        if (_gameModel.walls[y][x]) {
-          row += '1';
-        } else {
-          final jelly = _gameModel.jellies.firstWhere(
-            (j) => j.x == x && j.y == y,
-            orElse: () => Jelly(x: -1, y: -1, color: JellyColor.red, id: -1),
-          );
-          if (jelly.id != -1) {
-            row += jelly.color.value.toString();
-          } else {
-            row += '0';
-          }
-        }
-      }
-      stageData.add(row);
-    }
-
-    return stageData;
-  }
-
-  Future<void> _testPlay() async {
-    final stageData = _convertStageToData();
-
-    // Navigate to GameScreen for test play
-    final result = await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => GameScreen(stageData: stageData)),
-    );
-
-    // Check if stage was cleared
-    if (result == true) {
-      setState(() {
-        _hasBeenCleared = true;
-      });
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('テストプレイクリア!アップロードできます')));
-      }
-    }
-  }
-
-  Future<void> _saveStage() async {
-    setState(() => _isSaving = true);
-
-    try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        throw Exception('ログインが必要です');
-      }
-
-      // Get username
-      final userDoc = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(user.uid)
-          .get();
-
-      final username = userDoc.data()?['username'] ?? '名無し';
-
-      // Convert stage to data format
-      final stageData = _convertStageToData();
-
-      // Save to Firestore
-      await FirebaseFirestore.instance.collection('stages').add({
-        'stageData': stageData,
-        'authorId': user.uid,
-        'authorName': username,
-        'createdAt': FieldValue.serverTimestamp(),
-        'isPublic': true,
-        'likeCount': 0,
-        'clearCount': 0,
-      });
-
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('ステージをアップロードしました')));
-        // Navigate back after successful upload
-        Navigator.pop(context);
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('エラーが発生しました: $e')));
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isSaving = false);
-      }
-    }
-  }
-
-  void _handlePanStart(DragStartDetails details, Size size) {
-    _lastPaintedX = null;
-    _lastPaintedY = null;
-    _handlePanUpdate(
-      DragUpdateDetails(
-        globalPosition: details.globalPosition,
-        localPosition: details.localPosition,
-      ),
-      size,
-    );
-  }
-
-  void _handlePanUpdate(DragUpdateDetails details, Size size) {
-    final tileSize = size.width / gridW;
-    final dx = details.localPosition.dx;
-    final dy = details.localPosition.dy;
-
-    final x = (dx / tileSize).floor();
-    final y = (dy / tileSize).floor();
-
-    if (x >= 0 && x < gridW && y >= 0 && y < gridH) {
-      // Prevent editing outer borders
-      if (x == 0 || x == gridW - 1 || y == 0 || y == gridH - 1) return;
-
-      // Only update if we moved to a different cell
-      if (_lastPaintedX != x || _lastPaintedY != y) {
-        _updateCell(x, y);
-        _lastPaintedX = x;
-        _lastPaintedY = y;
-      }
-    }
-  }
-
-  void _handlePanEnd(DragEndDetails details) {
-    _lastPaintedX = null;
-    _lastPaintedY = null;
-  }
-
-  void _updateCell(int x, int y) {
-    setState(() {
-      final item = _paletteItems[_selectedPaletteIndex];
-      final type = item['type'];
-
-      // First remove anything at this location
-      _gameModel.walls[y][x] = false;
-      _gameModel.jellies.removeWhere((j) => j.x == x && j.y == y);
-
-      if (type == 'wall') {
-        _gameModel.walls[y][x] = true;
-      } else if (type == 'jelly') {
-        final color = item['jellyColor'] as JellyColor;
-        _gameModel.jellies.add(
-          Jelly(
-            x: x,
-            y: y,
-            color: color,
-            id: _gameModel.jellies.length, // Simple ID assignment
-          ),
-        );
-      }
-      // If eraser, we just removed everything, so done.
-
-      // Update groups for visual connection
-      _gameModel.updateJellyGroups();
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+
     return Scaffold(
       backgroundColor: const Color(0xFF2c3e50),
       appBar: AppBar(
         title: const Text(
-          'Stage Editor',
-          style: TextStyle(color: Colors.white),
+          'My Stages',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
+        centerTitle: true,
         iconTheme: const IconThemeData(color: Colors.white),
-        actions: [
-          if (_isSaving)
-            const Padding(
-              padding: EdgeInsets.all(16.0),
-              child: SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  color: Colors.white,
-                  strokeWidth: 2,
-                ),
+      ),
+      body: user == null
+          ? const Center(
+              child: Text(
+                'ログインが必要です',
+                style: TextStyle(color: Colors.white, fontSize: 18),
               ),
             )
-          else if (_hasBeenCleared)
-            IconButton(
-              icon: const Icon(Icons.upload),
-              onPressed: _saveStage,
-              tooltip: 'Upload Stage',
-            )
-          else
-            IconButton(
-              icon: const Icon(Icons.play_arrow),
-              onPressed: _testPlay,
-              tooltip: 'Test Play',
-            ),
-          IconButton(
-            icon: const Icon(Icons.delete_outline),
-            onPressed: _clearStage,
-            tooltip: 'Clear Stage',
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Map Area
-          Expanded(
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final size = constraints.biggest;
-                    // Ensure square aspect ratio that fits
-                    double side = size.width < size.height
-                        ? size.width
-                        : size.height;
+          : StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('stages')
+                  .where('authorId', isEqualTo: user.uid)
+                  .orderBy('createdAt', descending: true)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text(
+                      'エラーが発生しました: ${snapshot.error}',
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  );
+                }
 
-                    return GestureDetector(
-                      onPanStart: (details) =>
-                          _handlePanStart(details, Size(side, side)),
-                      onPanUpdate: (details) =>
-                          _handlePanUpdate(details, Size(side, side)),
-                      onPanEnd: _handlePanEnd,
-                      child: SizedBox(
-                        width: side,
-                        height: side,
-                        child: CustomPaint(
-                          painter: GamePainter(
-                            game: _gameModel,
-                            tileSize: side / gridW,
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(
+                    child: CircularProgressIndicator(color: Colors.white),
+                  );
+                }
+
+                final stages = snapshot.data?.docs ?? [];
+
+                return Column(
+                  children: [
+                    if (stages.isNotEmpty)
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: GridView.builder(
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 2,
+                                  crossAxisSpacing: 16,
+                                  mainAxisSpacing: 16,
+                                  childAspectRatio: 0.8,
+                                ),
+                            itemCount: stages.length,
+                            itemBuilder: (context, index) {
+                              final stageDoc = stages[index];
+                              final stageData =
+                                  stageDoc.data() as Map<String, dynamic>;
+                              final levelData = List<String>.from(
+                                stageData['stageData'] ?? [],
+                              );
+                              final clearCount = stageData['clearCount'] ?? 0;
+                              final likeCount = stageData['likeCount'] ?? 0;
+
+                              final previewGame = GameModel();
+                              previewGame.loadLevelFromData(levelData);
+
+                              return GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          StageEditorDetailScreen(
+                                            stageId: stageDoc.id,
+                                            initialStageData: levelData,
+                                          ),
+                                    ),
+                                  );
+                                },
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withValues(alpha: 0.3),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.1,
+                                      ),
+                                    ),
+                                  ),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Expanded(
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(12.0),
+                                          child: LayoutBuilder(
+                                            builder: (context, constraints) {
+                                              final size = constraints.biggest;
+                                              final tileSize =
+                                                  size.width / gridW;
+                                              return Center(
+                                                child: SizedBox(
+                                                  width: size.width,
+                                                  height: size.width,
+                                                  child: CustomPaint(
+                                                    painter: GamePainter(
+                                                      game: previewGame,
+                                                      tileSize: tileSize,
+                                                    ),
+                                                  ),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                      ),
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          bottom: 8.0,
+                                        ),
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Text(
+                                              '🏆 $clearCount',
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 12),
+                                            Text(
+                                              '👍 $likeCount',
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      )
+                    else
+                      const Expanded(
+                        child: Center(
+                          child: Text(
+                            'まだステージがありません\n下のボタンから作成しましょう',
+                            style: TextStyle(color: Colors.white, fontSize: 16),
+                            textAlign: TextAlign.center,
                           ),
                         ),
                       ),
-                    );
-                  },
-                ),
-              ),
-            ),
-          ),
-
-          // Palette Area
-          Container(
-            height: 120,
-            color: Colors.black.withValues(alpha: 0.3),
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: _paletteItems.length,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemBuilder: (context, index) {
-                final item = _paletteItems[index];
-                final isSelected = _selectedPaletteIndex == index;
-
-                return GestureDetector(
-                  onTap: () => setState(() => _selectedPaletteIndex = index),
-                  child: Container(
-                    width: 80,
-                    margin: const EdgeInsets.only(right: 12),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? Colors.white.withValues(alpha: 0.2)
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(12),
-                      border: isSelected
-                          ? Border.all(color: Colors.white, width: 2)
-                          : null,
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: item['color'],
-                            borderRadius: BorderRadius.circular(8),
-                            border: item['type'] == 'eraser'
-                                ? Border.all(color: Colors.grey)
-                                : null,
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: 60,
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const StageEditorDetailScreen(),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.add, size: 28),
+                          label: const Text(
+                            '新規ステージ作成',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                          child: item['type'] == 'eraser'
-                              ? const Icon(Icons.close, color: Colors.red)
-                              : null,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          item['label'],
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF3498db),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 5,
                           ),
                         ),
-                      ],
+                      ),
                     ),
-                  ),
+                  ],
                 );
               },
             ),
-          ),
-        ],
-      ),
     );
   }
 }
