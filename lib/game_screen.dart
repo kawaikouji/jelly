@@ -4,8 +4,16 @@ import 'game_model.dart';
 import 'game_painter.dart';
 
 class GameScreen extends StatefulWidget {
-  final int initialLevelIndex;
-  const GameScreen({super.key, this.initialLevelIndex = 0});
+  final int? initialLevelIndex;
+  final List<String>? stageData;
+  final String? stageId;
+
+  const GameScreen({
+    super.key,
+    this.initialLevelIndex,
+    this.stageData,
+    this.stageId,
+  });
 
   @override
   State<GameScreen> createState() => _GameScreenState();
@@ -18,7 +26,11 @@ class _GameScreenState extends State<GameScreen> {
   @override
   void initState() {
     super.initState();
-    _game.loadLevel(widget.initialLevelIndex);
+    if (widget.stageData != null) {
+      _game.loadLevelFromData(widget.stageData!);
+    } else {
+      _game.loadLevel(widget.initialLevelIndex ?? 0);
+    }
     _game.addListener(_onGameUpdate);
     // Request focus for keyboard input
     WidgetsBinding.instance.addPostFrameCallback((_) {

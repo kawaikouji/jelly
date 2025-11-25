@@ -315,18 +315,21 @@ class GameModel extends ChangeNotifier {
     }
 
     currentLevelIdx = index;
+    final levelData = levels[index];
+    loadLevelFromData(levelData);
+  }
+
+  void loadLevelFromData(List<String> levelData) {
     isLevelCleared = false;
     isGameClear = false;
     walls = [];
     jellies = [];
 
-    final levelData = levels[index];
-
     for (int y = 0; y < gridH; y++) {
       List<bool> wallRow = [];
       for (int x = 0; x < gridW; x++) {
         // levelData is list of strings, so we access row string then char index
-        if (x >= levelData[y].length) {
+        if (y >= levelData.length || x >= levelData[y].length) {
           wallRow.add(false);
           continue;
         }
