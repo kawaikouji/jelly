@@ -3,8 +3,56 @@ import 'stage_select_screen.dart';
 import 'stage_editor_screen.dart';
 import 'settings_dialog.dart';
 
-class TitleScreen extends StatelessWidget {
+class TitleScreen extends StatefulWidget {
   const TitleScreen({super.key});
+
+  @override
+  State<TitleScreen> createState() => _TitleScreenState();
+}
+
+class _TitleScreenState extends State<TitleScreen>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    )..repeat(reverse: true);
+
+    _scaleAnimation = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween<double>(
+          begin: 1.0,
+          end: 1.1,
+        ).chain(CurveTween(curve: Curves.easeInOut)),
+        weight: 50,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(
+          begin: 1.1,
+          end: 0.95,
+        ).chain(CurveTween(curve: Curves.easeInOut)),
+        weight: 25,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(
+          begin: 0.95,
+          end: 1.0,
+        ).chain(CurveTween(curve: Curves.elasticOut)),
+        weight: 25,
+      ),
+    ]).animate(_controller);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,12 +94,21 @@ class TitleScreen extends StatelessWidget {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Game Logo Image
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 32.0),
-                        child: Image.asset(
-                          'assets/images/title_logo.png',
-                          fit: BoxFit.contain,
+                      // Game Logo Image with Animation
+                      AnimatedBuilder(
+                        animation: _scaleAnimation,
+                        builder: (context, child) {
+                          return Transform.scale(
+                            scale: _scaleAnimation.value,
+                            child: child,
+                          );
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 32.0),
+                          child: Image.asset(
+                            'assets/images/title_logo.png',
+                            fit: BoxFit.contain,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 30),
