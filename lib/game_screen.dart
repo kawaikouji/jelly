@@ -224,15 +224,32 @@ class _GameScreenState extends State<GameScreen> {
                           ),
                         ),
                         const SizedBox(height: 10),
-                        ElevatedButton(
-                          onPressed: () {
-                            _game.nextLevel();
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: Colors.black,
-                          ),
-                          child: const Text('Next Level'),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            if (widget.stageData != null)
+                              ElevatedButton(
+                                onPressed: () {
+                                  Navigator.pop(context, true);
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF2ecc71),
+                                  foregroundColor: Colors.white,
+                                ),
+                                child: const Text('戻る'),
+                              )
+                            else
+                              ElevatedButton(
+                                onPressed: () {
+                                  _game.nextLevel();
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.white,
+                                  foregroundColor: Colors.black,
+                                ),
+                                child: const Text('Next Level'),
+                              ),
+                          ],
                         ),
                       ],
                     ),

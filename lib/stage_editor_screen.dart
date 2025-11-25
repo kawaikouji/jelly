@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'game_model.dart';
 import 'game_painter.dart';
+import 'game_screen.dart';
 
 class StageEditorScreen extends StatefulWidget {
   const StageEditorScreen({super.key});
@@ -18,6 +19,7 @@ class _StageEditorScreenState extends State<StageEditorScreen> {
   bool _isSaving = false;
   int? _lastPaintedX;
   int? _lastPaintedY;
+  bool _hasBeenCleared = false; // Track if test play was cleared
 
   // Palette items configuration
   final List<Map<String, dynamic>> _paletteItems = [
@@ -69,6 +71,7 @@ class _StageEditorScreenState extends State<StageEditorScreen> {
         }
       }
     }
+    _hasBeenCleared = false; // Reset cleared status
     setState(() {});
   }
 
@@ -96,6 +99,28 @@ class _StageEditorScreenState extends State<StageEditorScreen> {
     }
 
     return stageData;
+  }
+
+  Future<void> _testPlay() async {
+    final stageData = _convertStageToData();
+
+    // Navigate to GameScreen for test play
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => GameScreen(stageData: stageData)),
+    );
+
+    // Check if stage was cleared
+    if (result == true) {
+      setState(() {
+        _hasBeenCleared = true;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('テストプレイクリア!アップロードできます')));
+      }
+    }
   }
 
   Future<void> _saveStage() async {
@@ -132,7 +157,9 @@ class _StageEditorScreenState extends State<StageEditorScreen> {
       if (mounted) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('ステージを保存しました')));
+        ).showSnackBar(const SnackBar(content: Text('ステージをアップロードしました')));
+        // Navigate back after successful upload
+        Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
@@ -239,11 +266,17 @@ class _StageEditorScreenState extends State<StageEditorScreen> {
                 ),
               ),
             )
+          else if (_hasBeenCleared)
+            IconButton(
+              icon: const Icon(Icons.upload),
+              onPressed: _saveStage,
+              tooltip: 'Upload Stage',
+            )
           else
             IconButton(
-              icon: const Icon(Icons.save),
-              onPressed: _saveStage,
-              tooltip: 'Save Stage',
+              icon: const Icon(Icons.play_arrow),
+              onPressed: _testPlay,
+              tooltip: 'Test Play',
             ),
           IconButton(
             icon: const Icon(Icons.delete_outline),
