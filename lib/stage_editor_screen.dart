@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'game_model.dart';
 import 'game_painter.dart';
 
@@ -13,6 +15,9 @@ class _StageEditorScreenState extends State<StageEditorScreen> {
   late GameModel _gameModel;
   int _selectedPaletteIndex =
       0; // 0: Wall, 1: Red, 2: Blue, 3: Yellow, 4: Purple, 5: Eraser
+  bool _isSaving = false;
+  int? _lastPaintedX;
+  int? _lastPaintedY;
 
   // Palette items configuration
   final List<Map<String, dynamic>> _paletteItems = [
@@ -67,7 +72,94 @@ class _StageEditorScreenState extends State<StageEditorScreen> {
     setState(() {});
   }
 
-  void _handleTap(TapUpDetails details, Size size) {
+  List<String> _convertStageToData() {
+    List<String> stageData = [];
+
+    for (int y = 0; y < gridH; y++) {
+      String row = '';
+      for (int x = 0; x < gridW; x++) {
+        if (_gameModel.walls[y][x]) {
+          row += '1';
+        } else {
+          final jelly = _gameModel.jellies.firstWhere(
+            (j) => j.x == x && j.y == y,
+            orElse: () => Jelly(x: -1, y: -1, color: JellyColor.red, id: -1),
+          );
+          if (jelly.id != -1) {
+            row += jelly.color.value.toString();
+          } else {
+            row += '0';
+          }
+        }
+      }
+      stageData.add(row);
+    }
+
+    return stageData;
+  }
+
+  Future<void> _saveStage() async {
+    setState(() => _isSaving = true);
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        throw Exception('ログインが必要です');
+      }
+
+      // Get username
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+      final username = userDoc.data()?['username'] ?? '名無し';
+
+      // Convert stage to data format
+      final stageData = _convertStageToData();
+
+      // Save to Firestore
+      await FirebaseFirestore.instance.collection('stages').add({
+        'stageData': stageData,
+        'authorId': user.uid,
+        'authorName': username,
+        'createdAt': FieldValue.serverTimestamp(),
+        'isPublic': true,
+        'likeCount': 0,
+        'clearCount': 0,
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('ステージを保存しました')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('エラーが発生しました: $e')));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
+  }
+
+  void _handlePanStart(DragStartDetails details, Size size) {
+    _lastPaintedX = null;
+    _lastPaintedY = null;
+    _handlePanUpdate(
+      DragUpdateDetails(
+        globalPosition: details.globalPosition,
+        localPosition: details.localPosition,
+      ),
+      size,
+    );
+  }
+
+  void _handlePanUpdate(DragUpdateDetails details, Size size) {
     final tileSize = size.width / gridW;
     final dx = details.localPosition.dx;
     final dy = details.localPosition.dy;
@@ -79,8 +171,18 @@ class _StageEditorScreenState extends State<StageEditorScreen> {
       // Prevent editing outer borders
       if (x == 0 || x == gridW - 1 || y == 0 || y == gridH - 1) return;
 
-      _updateCell(x, y);
+      // Only update if we moved to a different cell
+      if (_lastPaintedX != x || _lastPaintedY != y) {
+        _updateCell(x, y);
+        _lastPaintedX = x;
+        _lastPaintedY = y;
+      }
     }
+  }
+
+  void _handlePanEnd(DragEndDetails details) {
+    _lastPaintedX = null;
+    _lastPaintedY = null;
   }
 
   void _updateCell(int x, int y) {
@@ -125,6 +227,24 @@ class _StageEditorScreenState extends State<StageEditorScreen> {
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
+          if (_isSaving)
+            const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
+                ),
+              ),
+            )
+          else
+            IconButton(
+              icon: const Icon(Icons.save),
+              onPressed: _saveStage,
+              tooltip: 'Save Stage',
+            ),
           IconButton(
             icon: const Icon(Icons.delete_outline),
             onPressed: _clearStage,
@@ -148,8 +268,11 @@ class _StageEditorScreenState extends State<StageEditorScreen> {
                         : size.height;
 
                     return GestureDetector(
-                      onTapUp: (details) =>
-                          _handleTap(details, Size(side, side)),
+                      onPanStart: (details) =>
+                          _handlePanStart(details, Size(side, side)),
+                      onPanUpdate: (details) =>
+                          _handlePanUpdate(details, Size(side, side)),
+                      onPanEnd: _handlePanEnd,
                       child: SizedBox(
                         width: side,
                         height: side,
