@@ -1,0 +1,233 @@
+import 'package:flutter/material.dart';
+import 'game_model.dart';
+import 'game_painter.dart';
+
+class StageEditorScreen extends StatefulWidget {
+  const StageEditorScreen({super.key});
+
+  @override
+  State<StageEditorScreen> createState() => _StageEditorScreenState();
+}
+
+class _StageEditorScreenState extends State<StageEditorScreen> {
+  late GameModel _gameModel;
+  int _selectedPaletteIndex =
+      0; // 0: Wall, 1: Red, 2: Blue, 3: Yellow, 4: Purple, 5: Eraser
+
+  // Palette items configuration
+  final List<Map<String, dynamic>> _paletteItems = [
+    {'label': 'Wall', 'color': GamePainter.colorWall, 'type': 'wall'},
+    {
+      'label': 'Red',
+      'color': GamePainter.jellyColors[JellyColor.red],
+      'type': 'jelly',
+      'jellyColor': JellyColor.red,
+    },
+    {
+      'label': 'Blue',
+      'color': GamePainter.jellyColors[JellyColor.blue],
+      'type': 'jelly',
+      'jellyColor': JellyColor.blue,
+    },
+    {
+      'label': 'Yellow',
+      'color': GamePainter.jellyColors[JellyColor.yellow],
+      'type': 'jelly',
+      'jellyColor': JellyColor.yellow,
+    },
+    {
+      'label': 'Purple',
+      'color': GamePainter.jellyColors[JellyColor.purple],
+      'type': 'jelly',
+      'jellyColor': JellyColor.purple,
+    },
+    {'label': 'Eraser', 'color': Colors.white, 'type': 'eraser'},
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _gameModel = GameModel();
+    _clearStage(); // Start with empty stage
+  }
+
+  void _clearStage() {
+    // Initialize empty 15x15 grid
+    _gameModel.walls = List.generate(gridH, (_) => List.filled(gridW, false));
+    _gameModel.jellies = [];
+
+    // Add border walls
+    for (int y = 0; y < gridH; y++) {
+      for (int x = 0; x < gridW; x++) {
+        if (x == 0 || x == gridW - 1 || y == 0 || y == gridH - 1) {
+          _gameModel.walls[y][x] = true;
+        }
+      }
+    }
+    setState(() {});
+  }
+
+  void _handleTap(TapUpDetails details, Size size) {
+    final tileSize = size.width / gridW;
+    final dx = details.localPosition.dx;
+    final dy = details.localPosition.dy;
+
+    final x = (dx / tileSize).floor();
+    final y = (dy / tileSize).floor();
+
+    if (x >= 0 && x < gridW && y >= 0 && y < gridH) {
+      // Prevent editing outer borders
+      if (x == 0 || x == gridW - 1 || y == 0 || y == gridH - 1) return;
+
+      _updateCell(x, y);
+    }
+  }
+
+  void _updateCell(int x, int y) {
+    setState(() {
+      final item = _paletteItems[_selectedPaletteIndex];
+      final type = item['type'];
+
+      // First remove anything at this location
+      _gameModel.walls[y][x] = false;
+      _gameModel.jellies.removeWhere((j) => j.x == x && j.y == y);
+
+      if (type == 'wall') {
+        _gameModel.walls[y][x] = true;
+      } else if (type == 'jelly') {
+        final color = item['jellyColor'] as JellyColor;
+        _gameModel.jellies.add(
+          Jelly(
+            x: x,
+            y: y,
+            color: color,
+            id: _gameModel.jellies.length, // Simple ID assignment
+          ),
+        );
+      }
+      // If eraser, we just removed everything, so done.
+
+      // Update groups for visual connection
+      _gameModel.updateJellyGroups();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF2c3e50),
+      appBar: AppBar(
+        title: const Text(
+          'Stage Editor',
+          style: TextStyle(color: Colors.white),
+        ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete_outline),
+            onPressed: _clearStage,
+            tooltip: 'Clear Stage',
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          // Map Area
+          Expanded(
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final size = constraints.biggest;
+                    // Ensure square aspect ratio that fits
+                    double side = size.width < size.height
+                        ? size.width
+                        : size.height;
+
+                    return GestureDetector(
+                      onTapUp: (details) =>
+                          _handleTap(details, Size(side, side)),
+                      child: SizedBox(
+                        width: side,
+                        height: side,
+                        child: CustomPaint(
+                          painter: GamePainter(
+                            game: _gameModel,
+                            tileSize: side / gridW,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+
+          // Palette Area
+          Container(
+            height: 120,
+            color: Colors.black.withValues(alpha: 0.3),
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              itemCount: _paletteItems.length,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemBuilder: (context, index) {
+                final item = _paletteItems[index];
+                final isSelected = _selectedPaletteIndex == index;
+
+                return GestureDetector(
+                  onTap: () => setState(() => _selectedPaletteIndex = index),
+                  child: Container(
+                    width: 80,
+                    margin: const EdgeInsets.only(right: 12),
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? Colors.white.withValues(alpha: 0.2)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(12),
+                      border: isSelected
+                          ? Border.all(color: Colors.white, width: 2)
+                          : null,
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: item['color'],
+                            borderRadius: BorderRadius.circular(8),
+                            border: item['type'] == 'eraser'
+                                ? Border.all(color: Colors.grey)
+                                : null,
+                          ),
+                          child: item['type'] == 'eraser'
+                              ? const Icon(Icons.close, color: Colors.red)
+                              : null,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          item['label'],
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

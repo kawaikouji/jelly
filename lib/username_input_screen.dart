@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'stage_select_screen.dart';
+import 'title_screen.dart';
 
 class UsernameInputScreen extends StatefulWidget {
   const UsernameInputScreen({super.key});
@@ -40,9 +40,9 @@ class _UsernameInputScreenState extends State<UsernameInputScreen> {
         });
 
         if (mounted) {
-          // 3. Navigate to StageSelectScreen
+          // 3. Navigate to TitleScreen
           Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => const StageSelectScreen()),
+            MaterialPageRoute(builder: (context) => const TitleScreen()),
           );
         }
       }

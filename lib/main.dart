@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'stage_select_screen.dart';
+import 'title_screen.dart';
 import 'username_input_screen.dart';
 
 import 'package:firebase_core/firebase_core.dart';
@@ -25,7 +25,7 @@ class MyApp extends StatelessWidget {
       ),
       home: FirebaseAuth.instance.currentUser == null
           ? const UsernameInputScreen()
-          : const StageSelectScreen(),
+          : const TitleScreen(),
     );
   }
 }
