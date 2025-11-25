@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'game_model.dart';
 import 'game_painter.dart';
 import 'game_screen.dart';
+import 'settings_dialog.dart';
 
 class StageSelectScreen extends StatelessWidget {
   const StageSelectScreen({super.key});
@@ -18,6 +19,17 @@ class StageSelectScreen extends StatelessWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings, color: Colors.white),
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (context) => const SettingsDialog(),
+              );
+            },
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),

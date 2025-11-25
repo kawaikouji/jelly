@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "661467871902",
+    "project_id": "jelly-52e9c",
+    "storage_bucket": "jelly-52e9c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:661467871902:android:c7f2825b6bedb3acb6198f",
+        "android_client_info": {
+          "package_name": "buunyan.game.jelly"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB4xOXeByvNltds0QXQV9BqxXv4flPw3O4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
