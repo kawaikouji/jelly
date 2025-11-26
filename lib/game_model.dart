@@ -46,6 +46,7 @@ class GameModel extends ChangeNotifier {
   int currentLevelIdx = 0;
   bool isLevelCleared = false;
   bool isGameClear = false;
+  List<String>? _originalStageData; // Store original stage data for reset
 
   // Level Data (Ported from HTML)
   static const List<List<String>> levels = [
@@ -316,10 +317,15 @@ class GameModel extends ChangeNotifier {
 
     currentLevelIdx = index;
     final levelData = levels[index];
+    _originalStageData = List<String>.from(levelData); // Store for reset
     loadLevelFromData(levelData);
   }
 
-  void loadLevelFromData(List<String> levelData) {
+  void loadLevelFromData(List<String> levelData, {bool storeOriginal = true}) {
+    if (storeOriginal) {
+      _originalStageData = List<String>.from(levelData); // Store for reset
+    }
+
     isLevelCleared = false;
     isGameClear = false;
     walls = [];
@@ -365,7 +371,13 @@ class GameModel extends ChangeNotifier {
   }
 
   void resetLevel() {
-    loadLevel(currentLevelIdx);
+    if (_originalStageData != null) {
+      // Reset using the stored original data
+      loadLevelFromData(_originalStageData!, storeOriginal: false);
+    } else {
+      // Fallback to loading from levels array
+      loadLevel(currentLevelIdx);
+    }
   }
 
   void move(int dx, int dy) {

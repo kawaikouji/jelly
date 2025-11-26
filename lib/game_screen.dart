@@ -86,6 +86,15 @@ class _GameScreenState extends State<GameScreen> {
         : availableHeight / gridH;
     return Scaffold(
       backgroundColor: const Color(0xFF2c3e50),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF34495e),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+          tooltip: '戻る',
+        ),
+        elevation: 0,
+      ),
       body: KeyboardListener(
         focusNode: _focusNode,
         onKeyEvent: _handleKeyEvent,
@@ -112,30 +121,6 @@ class _GameScreenState extends State<GameScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Text(
-                      'くっつけゼリー 4Colors',
-                      style: TextStyle(
-                        color: Color(0xFFecf0f1),
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    // Back Button
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: TextButton.icon(
-                        onPressed: () => Navigator.pop(context),
-                        icon: const Icon(
-                          Icons.arrow_back,
-                          color: Colors.white70,
-                        ),
-                        label: const Text(
-                          'Menu',
-                          style: TextStyle(color: Colors.white70),
-                        ),
-                      ),
-                    ),
                     const SizedBox(height: 5),
                     // Legend
                     Row(
