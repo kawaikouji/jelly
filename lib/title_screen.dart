@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'stage_select_screen.dart';
 import 'stage_editor_screen.dart';
-import 'settings_dialog.dart';
+import 'settings_screen.dart';
+import 'ranking_screen.dart';
 import 'radial_lines_painter.dart';
 import 'dart:math' as math;
 
@@ -105,97 +106,107 @@ class _TitleScreenState extends State<TitleScreen>
 
           // メインコンテンツ
           SafeArea(
-            child: Column(
-              children: [
-                // 設定ボタン
-                Align(
-                  alignment: Alignment.topRight,
-                  child: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: IconButton(
-                      icon: const Icon(
-                        Icons.settings,
-                        color: Colors.white,
-                        size: 28,
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // ロゴ（アニメーション付き）
+                  AnimatedBuilder(
+                    animation: _scaleAnimation,
+                    builder: (context, child) {
+                      return Transform.scale(
+                        scale: _scaleAnimation.value,
+                        child: child,
+                      );
+                    },
+                    child: Image.asset(
+                      'assets/images/title_logo.png',
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+
+                  // スタートボタン
+                  _buildGameButton(
+                    context,
+                    label: 'スタート',
+                    icon: Icons.play_arrow,
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFe74c3c), Color(0xFFc0392b)],
+                    ),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const StageSelectScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 16),
+
+                  // エディットボタン
+                  _buildGameButton(
+                    context,
+                    label: 'エディット',
+                    icon: Icons.edit,
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF3498db), Color(0xFF2980b9)],
+                    ),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const StageEditorScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 16),
+
+                  // ランキングボタン
+                  _buildGameButton(
+                    context,
+                    label: 'ランキング',
+                    icon: Icons.emoji_events,
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFf1c40f), Color(0xFFf39c12)],
+                    ),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const RankingScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // 設定ボタン（画面右上に配置）
+          SafeArea(
+            child: Align(
+              alignment: Alignment.topRight,
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: IconButton(
+                  icon: const Icon(
+                    Icons.settings,
+                    color: Colors.black,
+                    size: 28,
+                  ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const SettingsScreen(),
                       ),
-                      onPressed: () {
-                        showDialog(
-                          context: context,
-                          builder: (context) => const SettingsDialog(),
-                        );
-                      },
-                    ),
-                  ),
+                    );
+                  },
                 ),
-
-                // ロゴとボタン
-                Expanded(
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // ロゴ（アニメーション付き）
-                        AnimatedBuilder(
-                          animation: _scaleAnimation,
-                          builder: (context, child) {
-                            return Transform.scale(
-                              scale: _scaleAnimation.value,
-                              child: child,
-                            );
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 32.0,
-                            ),
-                            child: Image.asset(
-                              'assets/images/title_logo.png',
-                              fit: BoxFit.contain,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 30),
-
-                        // スタートボタン
-                        _buildGameButton(
-                          context,
-                          label: 'スタート',
-                          icon: Icons.play_arrow,
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFFe74c3c), Color(0xFFc0392b)],
-                          ),
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const StageSelectScreen(),
-                              ),
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 20),
-
-                        // エディットボタン
-                        _buildGameButton(
-                          context,
-                          label: 'エディット',
-                          icon: Icons.edit,
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF3498db), Color(0xFF2980b9)],
-                          ),
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const StageEditorScreen(),
-                              ),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ],
@@ -212,7 +223,7 @@ class _TitleScreenState extends State<TitleScreen>
   }) {
     return Container(
       width: 250,
-      height: 70,
+      height: 56,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(35),
         boxShadow: [

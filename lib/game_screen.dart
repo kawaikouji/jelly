@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'game_model.dart';
 import 'game_painter.dart';
 
@@ -22,6 +25,8 @@ class GameScreen extends StatefulWidget {
 class _GameScreenState extends State<GameScreen> {
   final GameModel _game = GameModel();
   final FocusNode _focusNode = FocusNode();
+  bool _hasIncrementedClearCount = false;
+  bool _hasLiked = false;
 
   @override
   void initState() {
@@ -46,7 +51,67 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _onGameUpdate() {
+    if (_game.isLevelCleared &&
+        !_hasIncrementedClearCount &&
+        widget.stageId != null) {
+      _incrementClearCount();
+    }
     setState(() {});
+  }
+
+  Future<void> _incrementClearCount() async {
+    _hasIncrementedClearCount = true;
+    try {
+      // Save to local storage and update user's total clear count if new clear
+      final prefs = await SharedPreferences.getInstance();
+      final clearedStages = prefs.getStringList('cleared_stages') ?? [];
+
+      if (!clearedStages.contains(widget.stageId)) {
+        clearedStages.add(widget.stageId!);
+        await prefs.setStringList('cleared_stages', clearedStages);
+
+        // Increment current user's total clear count
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null) {
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .update({'totalClearCount': FieldValue.increment(1)});
+        }
+      }
+
+      // Increment stage clear count (global)
+      final stageRef = FirebaseFirestore.instance
+          .collection('stages')
+          .doc(widget.stageId);
+
+      await stageRef.update({'clearCount': FieldValue.increment(1)});
+    } catch (e) {
+      debugPrint('Error incrementing clear count: $e');
+    }
+  }
+
+  Future<void> _incrementLikeCount() async {
+    if (_hasLiked || widget.stageId == null) return;
+
+    setState(() {
+      _hasLiked = true;
+    });
+
+    try {
+      await FirebaseFirestore.instance
+          .collection('stages')
+          .doc(widget.stageId)
+          .update({'likeCount': FieldValue.increment(1)});
+    } catch (e) {
+      debugPrint('Error incrementing like count: $e');
+      // Revert state if update fails
+      if (mounted) {
+        setState(() {
+          _hasLiked = false;
+        });
+      }
+    }
   }
 
   void _handleKeyEvent(KeyEvent event) {
@@ -222,8 +287,29 @@ class _GameScreenState extends State<GameScreen> {
                                   foregroundColor: Colors.white,
                                 ),
                                 child: const Text('戻る'),
-                              )
-                            else
+                              ),
+                            if (widget.stageData != null &&
+                                widget.stageId != null) ...[
+                              const SizedBox(width: 10),
+                              ElevatedButton.icon(
+                                onPressed: _hasLiked
+                                    ? null
+                                    : _incrementLikeCount,
+                                icon: Icon(
+                                  _hasLiked
+                                      ? Icons.favorite
+                                      : Icons.favorite_border,
+                                  color: Colors.pink,
+                                ),
+                                label: Text(_hasLiked ? 'Liked!' : 'いいね'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.white,
+                                  foregroundColor: Colors.pink,
+                                  disabledBackgroundColor: Colors.white,
+                                  disabledForegroundColor: Colors.pink,
+                                ),
+                              ),
+                            ] else if (widget.stageData == null)
                               ElevatedButton(
                                 onPressed: () {
                                   _game.nextLevel();

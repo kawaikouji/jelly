@@ -27,6 +27,7 @@ class _StageEditorDetailScreenState extends State<StageEditorDetailScreen> {
   int? _lastPaintedX;
   int? _lastPaintedY;
   bool _hasBeenCleared = false;
+  String _memoText = '';
 
   final List<Map<String, dynamic>> _paletteItems = [
     {'label': 'Wall', 'color': GamePainter.colorWall, 'type': 'wall'},
@@ -64,6 +65,7 @@ class _StageEditorDetailScreenState extends State<StageEditorDetailScreen> {
     if (widget.initialStageData != null) {
       _gameModel.loadLevelFromData(widget.initialStageData!);
       _hasBeenCleared = true; // Already uploaded stages are considered cleared
+      _loadMemo();
     } else {
       _clearStage();
     }
@@ -82,6 +84,61 @@ class _StageEditorDetailScreenState extends State<StageEditorDetailScreen> {
     }
     _hasBeenCleared = false;
     setState(() {});
+  }
+
+  Future<void> _loadMemo() async {
+    if (widget.stageId != null) {
+      try {
+        final doc = await FirebaseFirestore.instance
+            .collection('stages')
+            .doc(widget.stageId)
+            .get();
+        if (doc.exists) {
+          setState(() {
+            _memoText = doc.data()?['description'] ?? '';
+          });
+        }
+      } catch (e) {
+        // Ignore errors when loading memo
+      }
+    }
+  }
+
+  Future<void> _showMemoDialog() async {
+    final controller = TextEditingController(text: _memoText);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('ステージ説明'),
+          content: TextField(
+            controller: controller,
+            maxLength: 40,
+            decoration: const InputDecoration(
+              hintText: '40文字まで入力できます',
+              counterText: '',
+            ),
+            autofocus: true,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('キャンセル'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, controller.text),
+              child: const Text('保存'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (result != null) {
+      setState(() {
+        _memoText = result;
+      });
+    }
   }
 
   List<String> _convertStageToData() {
@@ -152,7 +209,7 @@ class _StageEditorDetailScreenState extends State<StageEditorDetailScreen> {
         await FirebaseFirestore.instance
             .collection('stages')
             .doc(widget.stageId)
-            .update({'stageData': stageData});
+            .update({'stageData': stageData, 'description': _memoText});
       } else {
         // Create new stage
         await FirebaseFirestore.instance.collection('stages').add({
@@ -163,7 +220,14 @@ class _StageEditorDetailScreenState extends State<StageEditorDetailScreen> {
           'isPublic': true,
           'likeCount': 0,
           'clearCount': 0,
+          'description': _memoText,
         });
+
+        // Increment user's post count
+        await FirebaseFirestore.instance
+            .collection('users')
+            .doc(user.uid)
+            .update({'postCount': FieldValue.increment(1)});
       }
 
       if (mounted) {
@@ -259,6 +323,11 @@ class _StageEditorDetailScreenState extends State<StageEditorDetailScreen> {
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.note_add),
+            onPressed: _showMemoDialog,
+            tooltip: 'メモを追加',
+          ),
           if (_isSaving)
             const Padding(
               padding: EdgeInsets.all(16.0),
@@ -296,31 +365,51 @@ class _StageEditorDetailScreenState extends State<StageEditorDetailScreen> {
             child: Center(
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final size = constraints.biggest;
-                    double side = size.width < size.height
-                        ? size.width
-                        : size.height;
-
-                    return GestureDetector(
-                      onPanStart: (details) =>
-                          _handlePanStart(details, Size(side, side)),
-                      onPanUpdate: (details) =>
-                          _handlePanUpdate(details, Size(side, side)),
-                      onPanEnd: _handlePanEnd,
-                      child: SizedBox(
-                        width: side,
-                        height: side,
-                        child: CustomPaint(
-                          painter: GamePainter(
-                            game: _gameModel,
-                            tileSize: side / gridW,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Display memo above the game grid
+                    if (_memoText.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8.0),
+                        child: Text(
+                          _memoText,
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
                           ),
+                          textAlign: TextAlign.center,
                         ),
                       ),
-                    );
-                  },
+                    Expanded(
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final size = constraints.biggest;
+                          double side = size.width < size.height
+                              ? size.width
+                              : size.height;
+
+                          return GestureDetector(
+                            onPanStart: (details) =>
+                                _handlePanStart(details, Size(side, side)),
+                            onPanUpdate: (details) =>
+                                _handlePanUpdate(details, Size(side, side)),
+                            onPanEnd: _handlePanEnd,
+                            child: SizedBox(
+                              width: side,
+                              height: side,
+                              child: CustomPaint(
+                                painter: GamePainter(
+                                  game: _gameModel,
+                                  tileSize: side / gridW,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),

@@ -3,10 +3,34 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'game_model.dart';
 import 'game_painter.dart';
 import 'game_screen.dart';
-import 'settings_dialog.dart';
+import 'settings_screen.dart';
 
-class StageSelectScreen extends StatelessWidget {
+import 'package:shared_preferences/shared_preferences.dart';
+
+class StageSelectScreen extends StatefulWidget {
   const StageSelectScreen({super.key});
+
+  @override
+  State<StageSelectScreen> createState() => _StageSelectScreenState();
+}
+
+class _StageSelectScreenState extends State<StageSelectScreen> {
+  List<String> _clearedStages = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadClearedStages();
+  }
+
+  Future<void> _loadClearedStages() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _clearedStages = prefs.getStringList('cleared_stages') ?? [];
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -56,9 +80,11 @@ class StageSelectScreen extends StatelessWidget {
                         size: 28,
                       ),
                       onPressed: () {
-                        showDialog(
-                          context: context,
-                          builder: (context) => const SettingsDialog(),
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const SettingsScreen(),
+                          ),
                         );
                       },
                     ),
@@ -139,14 +165,17 @@ class StageSelectScreen extends StatelessWidget {
                           final authorName = stageData['authorName'] ?? '不明';
                           final clearCount = stageData['clearCount'] ?? 0;
                           final likeCount = stageData['likeCount'] ?? 0;
+                          final isCleared = _clearedStages.contains(
+                            stageDoc.id,
+                          );
 
                           // Create a temporary model for preview
                           final previewGame = GameModel();
                           previewGame.loadLevelFromData(levelData);
 
                           return GestureDetector(
-                            onTap: () {
-                              Navigator.push(
+                            onTap: () async {
+                              await Navigator.push(
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) => GameScreen(
@@ -155,77 +184,116 @@ class StageSelectScreen extends StatelessWidget {
                                   ),
                                 ),
                               );
+                              // Reload cleared stages when returning from game
+                              _loadClearedStages();
                             },
                             child: Container(
                               decoration: BoxDecoration(
                                 color: Colors.black.withValues(alpha: 0.3),
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.1),
+                                  color: isCleared
+                                      ? const Color(0xFFf1c40f)
+                                      : Colors.white.withValues(alpha: 0.1),
+                                  width: isCleared ? 2 : 1,
                                 ),
                               ),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
+                              child: Stack(
                                 children: [
-                                  Expanded(
-                                    child: Padding(
-                                      padding: const EdgeInsets.all(12.0),
-                                      child: LayoutBuilder(
-                                        builder: (context, constraints) {
-                                          final size = constraints.biggest;
-                                          final tileSize = size.width / gridW;
-                                          return Center(
-                                            child: SizedBox(
-                                              width: size.width,
-                                              height: size.width,
-                                              child: CustomPaint(
-                                                painter: GamePainter(
-                                                  game: previewGame,
-                                                  tileSize: tileSize,
+                                  Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Expanded(
+                                        child: Padding(
+                                          padding: const EdgeInsets.all(12.0),
+                                          child: LayoutBuilder(
+                                            builder: (context, constraints) {
+                                              final size = constraints.biggest;
+                                              final tileSize =
+                                                  size.width / gridW;
+                                              return Center(
+                                                child: SizedBox(
+                                                  width: size.width,
+                                                  height: size.width,
+                                                  child: CustomPaint(
+                                                    painter: GamePainter(
+                                                      game: previewGame,
+                                                      tileSize: tileSize,
+                                                    ),
+                                                  ),
                                                 ),
+                                              );
+                                            },
+                                          ),
+                                        ),
+                                      ),
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          bottom: 4.0,
+                                        ),
+                                        child: Text(
+                                          'by $authorName',
+                                          style: TextStyle(
+                                            color: Colors.white.withValues(
+                                              alpha: 0.7,
+                                            ),
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ),
+                                      Padding(
+                                        padding: const EdgeInsets.only(
+                                          bottom: 8.0,
+                                        ),
+                                        child: Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Text(
+                                              '🏆 $clearCount',
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 12,
                                               ),
                                             ),
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                  ),
-                                  Padding(
-                                    padding: const EdgeInsets.only(bottom: 4.0),
-                                    child: Text(
-                                      'by $authorName',
-                                      style: TextStyle(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.7,
+                                            const SizedBox(width: 12),
+                                            Text(
+                                              '👍 $likeCount',
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                        fontSize: 12,
                                       ),
-                                    ),
+                                    ],
                                   ),
-                                  Padding(
-                                    padding: const EdgeInsets.only(bottom: 8.0),
-                                    child: Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Text(
-                                          '🏆 $clearCount',
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 12,
+                                  if (isCleared)
+                                    Positioned(
+                                      top: 8,
+                                      right: 8,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 4,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFf1c40f),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
                                           ),
                                         ),
-                                        const SizedBox(width: 12),
-                                        Text(
-                                          '👍 $likeCount',
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 12,
+                                        child: const Text(
+                                          'CLEAR!',
+                                          style: TextStyle(
+                                            color: Colors.black,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 10,
                                           ),
                                         ),
-                                      ],
+                                      ),
                                     ),
-                                  ),
                                 ],
                               ),
                             ),
