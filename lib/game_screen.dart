@@ -3,8 +3,10 @@ import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'game_model.dart';
 import 'game_painter.dart';
+import 'ad_helper.dart';
 
 class GameScreen extends StatefulWidget {
   final int? initialLevelIndex;
@@ -27,6 +29,7 @@ class _GameScreenState extends State<GameScreen> {
   final FocusNode _focusNode = FocusNode();
   bool _hasIncrementedClearCount = false;
   bool _hasLiked = false;
+  BannerAd? _bannerAd;
 
   @override
   void initState() {
@@ -41,12 +44,16 @@ class _GameScreenState extends State<GameScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _focusNode.requestFocus();
     });
+
+    _bannerAd = AdManager.createBannerAd();
+    _bannerAd?.load();
   }
 
   @override
   void dispose() {
     _game.removeListener(_onGameUpdate);
     _focusNode.dispose();
+    _bannerAd?.dispose();
     super.dispose();
   }
 
@@ -359,6 +366,13 @@ class _GameScreenState extends State<GameScreen> {
           ),
         ),
       ),
+      bottomNavigationBar: _bannerAd == null
+          ? null
+          : SizedBox(
+              height: _bannerAd!.size.height.toDouble(),
+              width: _bannerAd!.size.width.toDouble(),
+              child: AdWidget(ad: _bannerAd!),
+            ),
     );
   }
 

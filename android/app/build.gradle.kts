@@ -33,11 +33,24 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        // リリースビルド用の署名設定
+        create("release") { // create() を使用
+            storeFile = file("key.jks") // = を使用
+            storePassword = "fgu2kr5v" // = を使用
+            keyAlias = "jelly" // = を使用
+            keyPassword = "fgu2kr5v" // = を使用
+        }
+    }
+
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("debug")
+        }
         release {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 }

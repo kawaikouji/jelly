@@ -136,7 +136,6 @@ class _SettingsDialogState extends State<SettingsDialog> {
               );
             },
           ),
-
           ListTile(
             leading: const Icon(Icons.apps),
             title: const Text('他のアプリを見る'),

@@ -5,6 +5,7 @@ import 'username_input_screen.dart';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'ad_helper.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,9 +16,11 @@ class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   Future<FirebaseApp> _initializeFirebase() async {
-    return await Firebase.initializeApp(
+    final app = await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+    await AdManager.initialize();
+    return app;
   }
 
   @override

@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'game_model.dart';
 import 'game_painter.dart';
 import 'game_screen.dart';
+import 'ad_helper.dart';
 
 class StageEditorDetailScreen extends StatefulWidget {
   final String? stageId;
@@ -238,7 +239,15 @@ class _StageEditorDetailScreenState extends State<StageEditorDetailScreen> {
             ),
           ),
         );
-        Navigator.pop(context);
+
+        // インタースティシャル広告を表示
+        AdManager.showInterstitialAd(
+          onAdClosed: () {
+            if (mounted) {
+              Navigator.pop(context);
+            }
+          },
+        );
       }
     } catch (e) {
       if (mounted) {

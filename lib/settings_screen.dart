@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -14,11 +15,20 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final TextEditingController _nameController = TextEditingController();
   String? _currentName;
+  String _version = '';
 
   @override
   void initState() {
     super.initState();
     _loadUserName();
+    _loadVersion();
+  }
+
+  Future<void> _loadVersion() async {
+    final packageInfo = await PackageInfo.fromPlatform();
+    setState(() {
+      _version = packageInfo.version;
+    });
   }
 
   Future<void> _loadUserName() async {
@@ -166,7 +176,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               showLicensePage(
                 context: context,
                 applicationName: 'くっつけゼリー',
-                applicationVersion: '1.0.0',
+                applicationVersion: _version,
               );
             },
           ),
@@ -183,9 +193,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ListTile(
             leading: const Icon(Icons.info, color: Colors.white),
             title: const Text('バージョン', style: TextStyle(color: Colors.white)),
-            subtitle: const Text(
-              '1.0.0',
-              style: TextStyle(color: Colors.white70),
+            subtitle: Text(
+              _version,
+              style: const TextStyle(color: Colors.white70),
             ),
           ),
         ],
