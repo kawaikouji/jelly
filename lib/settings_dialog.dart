@@ -1,6 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class SettingsDialog extends StatefulWidget {
   const SettingsDialog({super.key});
@@ -86,6 +88,29 @@ class _SettingsDialogState extends State<SettingsDialog> {
     }
   }
 
+  Future<void> _openOtherApps() async {
+    final String url;
+    if (Platform.isAndroid) {
+      url = 'https://play.google.com/store/apps/dev?id=6874100708327409187';
+    } else if (Platform.isIOS) {
+      url = 'https://apps.apple.com/jp/developer/kouji-kawai/id170448691';
+    } else {
+      // その他のプラットフォームの場合はAndroidのURLを使用
+      url = 'https://play.google.com/store/apps/dev?id=6874100708327409187';
+    }
+
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('URLを開けませんでした')));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
@@ -106,9 +131,17 @@ class _SettingsDialogState extends State<SettingsDialog> {
             onTap: () {
               showLicensePage(
                 context: context,
-                applicationName: 'くっつけゼリー 4Colors',
+                applicationName: 'くっつけゼリー',
                 applicationVersion: '1.0.0',
               );
+            },
+          ),
+
+          ListTile(
+            leading: const Icon(Icons.apps),
+            title: const Text('他のアプリを見る'),
+            onTap: () {
+              _openOtherApps();
             },
           ),
           ListTile(
