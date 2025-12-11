@@ -424,61 +424,66 @@ class _StageEditorDetailScreenState extends State<StageEditorDetailScreen> {
             ),
           ),
           Container(
-            height: 120,
+            height: 100,
             color: Colors.black.withValues(alpha: 0.3),
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: _paletteItems.length,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemBuilder: (context, index) {
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+            child: Row(
+              children: List.generate(_paletteItems.length, (index) {
                 final item = _paletteItems[index];
                 final isSelected = _selectedPaletteIndex == index;
 
-                return GestureDetector(
-                  onTap: () => setState(() => _selectedPaletteIndex = index),
-                  child: Container(
-                    width: 80,
-                    margin: const EdgeInsets.only(right: 12),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? Colors.white.withValues(alpha: 0.2)
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(12),
-                      border: isSelected
-                          ? Border.all(color: Colors.white, width: 2)
-                          : null,
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: item['color'],
-                            borderRadius: BorderRadius.circular(8),
-                            border: item['type'] == 'eraser'
-                                ? Border.all(color: Colors.grey)
+                return Expanded(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _selectedPaletteIndex = index),
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 2),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? Colors.white.withValues(alpha: 0.2)
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(8),
+                        border: isSelected
+                            ? Border.all(color: Colors.white, width: 2)
+                            : null,
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: item['color'],
+                              borderRadius: BorderRadius.circular(8),
+                              border: item['type'] == 'eraser'
+                                  ? Border.all(color: Colors.grey)
+                                  : null,
+                            ),
+                            child: item['type'] == 'eraser'
+                                ? const Icon(
+                                    Icons.close,
+                                    color: Colors.red,
+                                    size: 20,
+                                  )
                                 : null,
                           ),
-                          child: item['type'] == 'eraser'
-                              ? const Icon(Icons.close, color: Colors.red)
-                              : null,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          item['label'],
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
+                          const SizedBox(height: 4),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              item['label'],
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                              ),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 );
-              },
+              }),
             ),
           ),
         ],
