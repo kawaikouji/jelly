@@ -170,6 +170,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const Divider(color: Colors.white24),
           ListTile(
+            leading: const Icon(Icons.apps, color: Colors.white),
+            title: const Text(
+              '他のアプリを見る',
+              style: TextStyle(color: Colors.white),
+            ),
+            onTap: _openOtherApps,
+          ),
+          const Divider(color: Colors.white24),
+          ListTile(
             leading: const Icon(Icons.description, color: Colors.white),
             title: const Text('ライセンス', style: TextStyle(color: Colors.white)),
             onTap: () {
@@ -179,15 +188,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 applicationVersion: _version,
               );
             },
-          ),
-          const Divider(color: Colors.white24),
-          ListTile(
-            leading: const Icon(Icons.apps, color: Colors.white),
-            title: const Text(
-              '他のアプリを見る',
-              style: TextStyle(color: Colors.white),
-            ),
-            onTap: _openOtherApps,
           ),
           const Divider(color: Colors.white24),
           ListTile(
